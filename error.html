@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Error {{ code }} — SmartHealth{% endblock %}
+
+{% block content %}
+<div class="empty-state" style="padding: 60px 20px;">
+  <div class="empty-icon">⚠️</div>
+  <h1 class="empty-title" style="font-size: 28px; margin-bottom: 8px;">Error {{ code }}: {{ title }}</h1>
+  <p class="empty-desc" style="font-size: 16px; margin-bottom: 24px;">{{ message }}</p>
+  <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Return to Main Dashboard</a>
+</div>
+{% endblock %}

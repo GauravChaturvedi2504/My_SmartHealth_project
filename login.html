@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In — SmartHealth{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 40px auto;">
+  <div class="card" style="box-shadow: var(--shadow-lg);">
+    <div class="card-header" style="text-align: center; display: block; padding: 24px 20px 16px 20px;">
+      <div class="brand-logo-icon" style="margin: 0 auto 12px auto; width: 44px; height: 44px; font-size: 24px;">✚</div>
+      <h2 style="font-size: 20px; color: #0f172a; margin-bottom: 4px;">SmartHealth Staff Portal</h2>
+      <p style="font-size: 13px; color: #64748b;">Sign in with authorized health centre credentials</p>
+    </div>
+
+    <div class="card-body" style="padding: 24px;">
+      {% if error %}
+        <div class="alert alert-danger" role="alert">
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <input type="text" id="username" name="username" class="form-control" placeholder="e.g. admin or staff" required autofocus autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; margin-top: 8px;">
+          Secure Sign In
+        </button>
+      </form>
+
+      <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-color);">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+          Demo Evaluation Credentials
+        </div>
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; font-size: 13px;">
+          <div style="margin-bottom: 8px;">
+            <strong>Administrator:</strong> <code>admin</code> / <code>Admin@123</code><br>
+            <span style="font-size: 11px; color: #64748b;">Full multi-centre management & config</span>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <strong>PHC Staff:</strong> <code>staff</code> / <code>Staff@123</code><br>
+            <span style="font-size: 11px; color: #64748b;">Assigned to Green Valley PHC</span>
+          </div>
+          <div>
+            <strong>CHC Staff:</strong> <code>sunrise_staff</code> / <code>Staff@123</code><br>
+            <span style="font-size: 11px; color: #64748b;">Assigned to Sunrise CHC</span>
+          </div>
+        </div>
+        <div style="margin-top: 10px; font-size: 11px; color: #94a3b8; text-align: center;">
+          🔒 Passwords securely hashed with PBKDF2/SHA-256. Sessions verified server-side.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

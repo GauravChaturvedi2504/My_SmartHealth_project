@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block title %}Operational Dashboard — SmartHealth{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Executive Healthcare Dashboard</h1>
+    <div class="page-subtitle">
+      Showing metrics for: <strong>{{ active_centre_name }}</strong>
+      {% if selected_centre %}
+        <span style="font-size: 12px; color: #64748b;">({{ selected_centre.centre_type }} • {{ selected_centre.location }})</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('inventory.scan_page') }}" class="btn btn-secondary">
+      📷 Scan QR Code
+    </a>
+    <a href="{{ url_for('inventory.add_batch') }}" class="btn btn-primary">
+      ➕ Add Medicine Batch
+    </a>
+  </div>
+</div>
+
+<!-- Critical Alert Banner if any critical alerts exist -->
+{% if critical_alerts_count > 0 %}
+<div class="alert alert-danger" style="margin-bottom: 24px; border-left: 4px solid var(--danger);">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 20px;">🚨</span>
+    <div>
+      <strong>Critical Attention Required:</strong> There are {{ critical_alerts_count }} critical issue(s) flagged (expired medicine or urgent stock shortages) requiring prompt action.
+    </div>
+  </div>
+  <a href="{{ url_for('alerts.index', severity='CRITICAL') }}" class="btn btn-danger btn-sm">Review Critical Alerts</a>
+</div>
+{% endif %}
+
+<!-- Primary Metrics Summary Grid (7 Operational Pillars) -->
+<div class="metrics-grid">
+  <!-- 1. Patient Footfall Today -->
+  <div class="metric-card theme-teal">
+    <div class="metric-header">
+      <span class="metric-title">Patients Today</span>
+      <div class="metric-icon-wrap">👥</div>
+    </div>
+    <div class="metric-value">{{ total_patients_today }}</div>
+    <div class="metric-subtext">
+      OPD: <strong>{{ op_today }}</strong> | Emergency: <strong>{{ em_today }}</strong> | Referral: <strong>{{ ref_today }}</strong>
+    </div>
+  </div>
+
+  <!-- 2. Beds: Available & Occupied -->
+  <div class="metric-card theme-blue">
+    <div class="metric-header">
+      <span class="metric-title">Bed Capacity</span>
+      <div class="metric-icon-wrap">🛏️</div>
+    </div>
+    <div class="metric-value">{{ available_beds }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">available / {{ total_beds }} total</span></div>
+    <div class="metric-subtext">
+      Occupied: <strong>{{ occupied_beds }}</strong> ({{ occupancy_rate }}%) | Maintenance: <strong>{{ out_of_service_beds }}</strong>
+    </div>
+  </div>
+
+  <!-- 3. Total Medicines -->
+  <div class="metric-card theme-teal">
+    <div class="metric-header">
+      <span class="metric-title">Total Medicines</span>
+      <div class="metric-icon-wrap">💊</div>
+    </div>
+    <div class="metric-value">{{ total_medicines }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">batches</span></div>
+    <div class="metric-subtext">
+      Tracked with individual QR codes & batch IDs
+    </div>
+  </div>
+
+  <!-- 4. Medicines Below Minimum Stock -->
+  <div class="metric-card {% if low_stock_medicines > 0 %}theme-red{% else %}theme-green{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Low Stock Batches</span>
+      <div class="metric-icon-wrap">⚠️</div>
+    </div>
+    <div class="metric-value" style="{% if low_stock_medicines > 0 %}color: var(--danger);{% endif %}">{{ low_stock_medicines }}</div>
+    <div class="metric-subtext">
+      Batches at or below minimum threshold
+    </div>
+  </div>
+
+  <!-- 5. Medicines Nearing Expiry -->
+  <div class="metric-card {% if expired_medicines > 0 %}theme-red{% elif nearing_expiry_medicines > 0 %}theme-amber{% else %}theme-green{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Expiry Warnings</span>
+      <div class="metric-icon-wrap">⏳</div>
+    </div>
+    <div class="metric-value">{{ nearing_expiry_medicines }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">near expiry</span></div>
+    <div class="metric-subtext">
+      Expired: <strong style="color: var(--danger);">{{ expired_medicines }}</strong> (excluded from usable stock)
+    </div>
+  </div>
+
+  <!-- 6. Doctors on Duty & Leave -->
+  <div class="metric-card theme-blue">
+    <div class="metric-header">
+      <span class="metric-title">Doctors On Duty</span>
+      <div class="metric-icon-wrap">👨‍⚕️</div>
+    </div>
+    <div class="metric-value">{{ doctors_on_duty }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">of {{ total_doctors }}</span></div>
+    <div class="metric-subtext">
+      Available: <strong>{{ doctors_available }}</strong> | On Leave: <strong>{{ doctors_on_leave }}</strong> | Unavailable: <strong>{{ doctors_unavailable }}</strong>
+    </div>
+  </div>
+
+  <!-- 7. Pending Cleaning Tasks -->
+  <div class="metric-card {% if overdue_cleaning_tasks > 0 %}theme-amber{% else %}theme-teal{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Housekeeping</span>
+      <div class="metric-icon-wrap">🧹</div>
+    </div>
+    <div class="metric-value">{{ pending_cleaning_tasks }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">pending</span></div>
+    <div class="metric-subtext">
+      In Progress: <strong>{{ in_progress_cleaning_tasks }}</strong> | Overdue: <strong style="color: var(--danger);">{{ overdue_cleaning_tasks }}</strong>
+    </div>
+  </div>
+
+  <!-- 8. Patient Transport Equipment (Wheelchairs & Stretchers) -->
+  <div class="metric-card {% if overdue_equipment > 0 %}theme-red{% elif in_use_equipment > 0 %}theme-blue{% else %}theme-green{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Patient Equipment</span>
+      <div class="metric-icon-wrap">🦽</div>
+    </div>
+    <div class="metric-value">{{ avail_equipment }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">available</span></div>
+    <div class="metric-subtext">
+      In Use: <strong>{{ in_use_equipment }}</strong> | Overdue: <strong style="{% if overdue_equipment > 0 %}color: var(--danger);{% endif %}">{{ overdue_equipment }}</strong> | Maintenance: <strong>{{ maint_equipment }}</strong>
+    </div>
+  </div>
+
+  <!-- 9. Ambulances Fleet -->
+  <div class="metric-card theme-teal">
+    <div class="metric-header">
+      <span class="metric-title">Ambulance Fleet</span>
+      <div class="metric-icon-wrap">🚑</div>
+    </div>
+    <div class="metric-value">{{ avail_ambulances }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">of {{ total_ambulances }} ready</span></div>
+    <div class="metric-subtext">
+      Emergency transit & inter-hospital transfer
+    </div>
+  </div>
+
+  <!-- 10. Facility Infrastructure Maintenance -->
+  <div class="metric-card {% if open_work_orders > 0 %}theme-amber{% else %}theme-green{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Facility Work Orders</span>
+      <div class="metric-icon-wrap">⚡</div>
+    </div>
+    <div class="metric-value">{{ open_work_orders }} <span style="font-size: 14px; font-weight: normal; color: #64748b;">open orders</span></div>
+    <div class="metric-subtext">
+      Generators, cold chain, and RO maintenance
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard Two-Column Layout -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px; margin-bottom: 28px;">
+  <!-- Active Priority Alerts Section -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Priority System Alerts</h2>
+      <a href="{{ url_for('alerts.index') }}" class="btn btn-secondary btn-sm">View All Alerts</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      {% if active_alerts %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Alert Title</th>
+                <th>Facility</th>
+                <th>Time</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in active_alerts %}
+                <tr>
+                  <td>
+                    {% if a.severity == 'CRITICAL' %}
+                      <span class="badge badge-critical">CRITICAL</span>
+                    {% elif a.severity == 'HIGH' %}
+                      <span class="badge badge-high">HIGH</span>
+                    {% elif a.severity == 'MEDIUM' %}
+                      <span class="badge badge-medium">MEDIUM</span>
+                    {% else %}
+                      <span class="badge badge-info">INFO</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <strong>{{ a.title }}</strong>
+                    <div style="font-size: 12px; color: #64748b;">{{ a.message|truncate(80) }}</div>
+                  </td>
+                  <td style="font-size: 12px;">{{ a.centre_name or 'All Facilities' }}</td>
+                  <td style="font-size: 12px; color: #64748b;">{{ a.created_at[11:16] }}</td>
+                  <td>
+                    <form method="POST" action="{{ url_for('alerts.acknowledge', alert_id=a.id) }}" style="display: inline;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-secondary btn-sm" title="Acknowledge awareness of alert">Acknowledge</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">✅</div>
+          <div class="empty-title">All Systems Normal</div>
+          <p class="empty-desc">No active or unacknowledged priority alerts in the system.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 7-Day Patient Volume Trend -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Patient Footfall (Past 7 Days)</h2>
+      <a href="{{ url_for('footfall.index') }}" class="btn btn-secondary btn-sm">Log Today's Count</a>
+    </div>
+    <div class="card-body">
+      {% if footfall_trends %}
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; height: 160px; padding: 10px 0; border-bottom: 2px solid var(--border-color);">
+          {% set max_ff = 1 %}
+          {% for day in footfall_trends %}
+            {% if day.day_total > max_ff %}{% set max_ff = day.day_total %}{% endif %}
+          {% endfor %}
+
+          {% for day in footfall_trends %}
+            {% set bar_height = (day.day_total / (max_ff if max_ff > 0 else 1) * 120)|round|int %}
+            <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; font-weight: 700; color: #0f172a;">{{ day.day_total }}</span>
+              <div style="width: 100%; max-width: 38px; height: {{ bar_height }}px; min-height: 8px; background: linear-gradient(to top, var(--primary), var(--secondary)); border-radius: 4px 4px 0 0;" title="{{ day.record_date }}: {{ day.day_total }} patients"></div>
+              <span style="font-size: 10px; color: #64748b; white-space: nowrap;">{{ day.record_date[5:] }}</span>
+            </div>
+          {% endfor %}
+        </div>
+        <div style="margin-top: 12px; font-size: 12px; color: #64748b; text-align: center;">
+          Daily aggregate volume recorded across OPD, Emergency, and Specialised Referrals.
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <p class="empty-desc">No footfall records logged for this facility yet.</p>
+          <a href="{{ url_for('footfall.index') }}" class="btn btn-primary btn-sm">Enter First Record</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Recent Stock Audit Activity Trail -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Recent Stock Transactions & Audit Trail</h2>
+    <a href="{{ url_for('audit.index') }}" class="btn btn-secondary btn-sm">Full Audit History</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    {% if recent_activity %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Medicine</th>
+              <th>Batch ID</th>
+              <th>Facility</th>
+              <th>Transaction</th>
+              <th>Quantity Change</th>
+              <th>Staff User</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for act in recent_activity %}
+              <tr>
+                <td style="font-size: 12px; color: #64748b;">{{ act.timestamp }}</td>
+                <td><strong>{{ act.medicine_name }}</strong></td>
+                <td><code>{{ act.batch_id }}</code></td>
+                <td style="font-size: 12px;">{{ act.centre_name }}</td>
+                <td>
+                  {% if act.transaction_type == 'stock_received' %}
+                    <span class="badge badge-success">Received</span>
+                  {% elif act.transaction_type == 'stock_used' %}
+                    <span class="badge badge-info">Dispensed</span>
+                  {% elif act.transaction_type == 'expired_removed' %}
+                    <span class="badge badge-critical">Expired Removal</span>
+                  {% else %}
+                    <span class="badge badge-secondary">Correction</span>
+                  {% endif %}
+                </td>
+                <td style="font-weight: 700; color: {% if act.change_quantity > 0 %}#16a34a{% else %}#dc2626{% endif %};">
+                  {% if act.change_quantity > 0 %}+{% endif %}{{ act.change_quantity }}
+                  <span style="font-weight: normal; font-size: 12px; color: #64748b;">(Bal: {{ act.updated_quantity }})</span>
+                </td>
+                <td style="font-size: 12px;">{{ act.staff_username }}</td>
+                <td style="font-size: 12px; color: #64748b;">{{ act.reason or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-title">No Audit Logs Yet</div>
+        <p class="empty-desc">Stock transactions will be automatically and immutably recorded here.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
