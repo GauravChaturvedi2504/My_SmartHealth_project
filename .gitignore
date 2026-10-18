@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# SQLite
+*.db
+*.sqlite3
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
